@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Hemisphere Light - Simple</title>
+
+    <style>
+        body { margin: 0; }
+        canvas { width: 100%; height: 100% }
+    </style>
+</head>
+<body>
+    <!-- Library untuk memuat three.js -->
+    <script src="libs/three.js"></script>
+
+    <!-- Orbit controls dapat membuat kamera meng-orbit di sekeliling target -->
+    <script src="libs/OrbitControls.js"></script>
+
+    <script>
+        var scene = new THREE.Scene();
+        var camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+
+        var renderer = new THREE.WebGLRenderer();
+        renderer.setSize( window.innerWidth, window.innerHeight );
+        // renderer.shadowMapEnabled = true;
+        document.body.appendChild( renderer.domElement );
+
+        var controls = new THREE.OrbitControls( camera, renderer.domElement );
+
+        var geometry = new THREE.BoxGeometry( 2, 2, 2 );
+        var material = new THREE.MeshPhongMaterial( { color: 0xdddddd } );
+        var cube = new THREE.Mesh( geometry, material );
+
+        var hemiLight = new THREE.HemisphereLight( 0xFF0000, 0xffffff, 1 ); // (skyColor, groundColor, intensity)
+        hemiLight.position.set( -5, 6, 0 ); //Posisi sumber cahaya: x, y, z
+
+        scene.add( hemiLight );
+        scene.add( cube );
+
+        // Helper agar memudahkan mengatur posisi cahaya pada hemilight
+        var hemiLightHelper = new THREE.HemisphereLightHelper( hemiLight, 5 );
+        scene.add( hemiLightHelper );
+
+        camera.position.z = 5;
+
+        function animate() {
+            requestAnimationFrame( animate );
+
+            cube.rotation.x += 0.01;
+            cube.rotation.y += 0.01;
+            cube.rotation.z += 0.01;
+
+            renderer.render( scene, camera );
+            controls.update();
+        }
+        animate();
+    </script>
+</body>
+</html>

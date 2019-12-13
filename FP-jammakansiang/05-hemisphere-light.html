@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Hemisphere Light</title>
+
+    <style>
+        body { margin: 0; overflow: hidden;}
+        canvas { width: 100%; height: 100% }
+        
+    </style>
+</head>
+<body>
+    <div id="Stats-output">
+    </div>
+    <div id="WebGL-output">
+    </div>
+
+    <!-- Library untuk memuat three.js -->
+    <script src="libs/three.js"></script>
+    <script src="libs/dat.gui.js"></script>
+    <script src="libs/stats.min.js"></script>
+
+    <!-- Orbit controls dapat membuat kamera meng-orbit di sekeliling target -->
+    <script src="libs/OrbitControls.js"></script>
+
+    <script>
+    function init() {
+        var stats = initStats();
+
+        var scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0xaaaaaa, 0.010, 200); // Kabut
+
+        var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        var renderer = new THREE.WebGLRenderer();
+        // Default color pada scene
+        renderer.setClearColor(new THREE.Color(0xaaaaff, 1.0));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMapEnabled = true;
+
+        var controls = new THREE.OrbitControls( camera, renderer.domElement );
+
+        // Membuat ground dengan planeGeometry
+        var textureGrass = THREE.ImageUtils.loadTexture("assets/grasslight-big.jpg");
+        textureGrass.wrapS = THREE.RepeatWrapping;
+        textureGrass.wrapT = THREE.RepeatWrapping;
+        textureGrass.repeat.set(4, 4);
+        var planeGeometry = new THREE.PlaneGeometry(1000, 200, 20, 20);
+        var planeMaterial = new THREE.MeshLambertMaterial({map: textureGrass});
+        var planeMaterial = new THREE.MeshLambertMaterial();
+        var plane = new THREE.Mesh(planeGeometry, planeMaterial);
+        plane.receiveShadow = true;
+        
+        //Rotasi dan posisi
+        plane.rotation.x = -0.5 * Math.PI;
+        plane.position.x = 15;
+        plane.position.y = 0;
+        plane.position.z = 0;
+        scene.add(plane);
+
+        // Kubus
+        var cubeGeometry = new THREE.BoxGeometry(4, 4, 4);
+        var cubeMaterial = new THREE.MeshLambertMaterial({color: 0xff3333});
+        var cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+        // Posisi kubus
+        cube.position.x = -4;
+        cube.position.y = 3;
+        cube.position.z = 0;
+        cube.castShadow = true; // Agar bayangan object pada ground muncul
+        scene.add(cube);
+
+        // Membuat bola dengan sphereGeometry
+        var sphereGeometry = new THREE.SphereGeometry(4, 25, 25);
+        var sphereMaterial = new THREE.MeshLambertMaterial({color: 0x7777ff});
+        var sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+        // Posisi bola
+        sphere.position.x = 10;
+        sphere.position.y = 5;
+        sphere.position.z = 10;
+        sphere.castShadow = true; // Agar bayangan object pada ground muncul
+        scene.add(sphere);
+
+        // Posisi camera
+        camera.position.x = -20;
+        camera.position.y = 15;
+        camera.position.z = 45;
+        camera.lookAt(new THREE.Vector3(5, 0, 0));
+        // add spotlight for a bit of light
+        var spotLight0 = new THREE.SpotLight(0xcccccc);
+        spotLight0.position.set(-40, 60, -10);
+        spotLight0.lookAt(plane);
+        scene.add(spotLight0);
+
+        var target = new THREE.Object3D();
+        target.position = new THREE.Vector3(5, 0, 0);
+
+        
+        var hemiLight = new THREE.HemisphereLight(0x0000ff, 0x00ff00, 0.6);
+        hemiLight.position.set(0, 500, 0);
+        scene.add(hemiLight);
+        var pointColor = "#ffffff";
+        // var dirLight = new THREE.SpotLight( pointColor);
+        var dirLight = new THREE.DirectionalLight(pointColor);
+        dirLight.position.set(30, 10, -50);
+        dirLight.castShadow = true;
+        dirLight.target = plane;
+        dirLight.shadowCameraNear = 0.1;
+        dirLight.shadowCameraFar = 200;
+        dirLight.shadowCameraLeft = -50;
+        dirLight.shadowCameraRight = 50;
+        dirLight.shadowCameraTop = 50;
+        dirLight.shadowCameraBottom = -50;
+        dirLight.shadowMapWidth = 2048;
+        dirLight.shadowMapHeight = 2048;
+        scene.add(dirLight);
+
+        document.getElementById("WebGL-output").appendChild(renderer.domElement);
+
+        var step = 0;
+        var invert = 1;
+        var phase = 0;
+        var controls = new function () {
+            this.rotationSpeed = 0.03;
+            this.bouncingSpeed = 0.03;
+            this.hemisphere = true;
+            this.color = 0x00ff00;
+            this.skyColor = 0x0000ff;
+            this.intensity = 0.6;
+        };
+        var gui = new dat.GUI();
+        gui.add(controls, 'hemisphere').onChange(function (e) {
+            if (!e) {
+                hemiLight.intensity = 0;
+            } else {
+                hemiLight.intensity = controls.intensity;
+            }
+        });
+        gui.addColor(controls, 'color').onChange(function (e) {
+            hemiLight.groundColor = new THREE.Color(e);
+        });
+        gui.addColor(controls, 'skyColor').onChange(function (e) {
+            hemiLight.color = new THREE.Color(e);
+        });
+        gui.add(controls, 'intensity', 0, 5).onChange(function (e) {
+            hemiLight.intensity = e;
+        });
+        render();
+        function render() {
+            stats.update();
+            // Rotasi Kubus
+            cube.rotation.x += controls.rotationSpeed;
+            cube.rotation.y += controls.rotationSpeed;
+            cube.rotation.z += controls.rotationSpeed;
+            // Memantulkan bola
+            step += controls.bouncingSpeed;
+            sphere.position.x = 20 + ( 10 * (Math.cos(step)));
+            sphere.position.y = 2 + ( 10 * Math.abs(Math.sin(step)));
+            requestAnimationFrame(render);
+            renderer.render(scene, camera);
+            controls.update();
+        }
+
+        function initStats() {
+            var stats = new Stats();
+            stats.setMode(0); // 0: fps, 1: ms
+
+            stats.domElement.style.position = 'absolute';
+            stats.domElement.style.left = '0px';
+            stats.domElement.style.top = '0px';
+            document.getElementById("Stats-output").appendChild(stats.domElement);
+            return stats;
+        }
+    }
+    window.onload = init;
+    </script>
+</body>
+</html>
